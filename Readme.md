@@ -15,14 +15,13 @@ A simplified Reverse ETL setup flow that allows users to configure a data pipeli
 
 - **Docker** and **Docker Compose** (for PostgreSQL database)
 - **Node.js** v20.19.0 (specified in `.nvmrc`)
-- **npm** (comes with Node.js)
 
 ## Quick Start
 
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url>
+git clone git@github.com:Dmytro9/reverse-etl.git
 cd reverse-etl
 ```
 
@@ -119,19 +118,19 @@ frontend/src/
 
 ```
 backend/src/
-├── controllers/         # Route handlers
+├── controllers/                # Route handlers
 │   └── connectionController.ts
-├── services/           # Business logic
+├── services/                   # Business logic
 │   ├── connectionService.ts    # Connection pool management
 │   ├── tableService.ts         # Table/column operations
 │   └── mappingService.ts       # Data transformation
-├── middleware/         # Express middleware
+├── middleware/                 # Express middleware
 │   └── errorHandler.ts         # Error handling
-├── validation/         # Request validation
+├── validation/                 # Request validation
 │   └── schemas.ts              # Zod schemas
-├── routes/             # API routes
+├── routes/                     # API routes
 │   └── connections.ts
-└── types/              # TypeScript types
+└── types/                      # TypeScript types
 ```
 
 ## API Endpoints
