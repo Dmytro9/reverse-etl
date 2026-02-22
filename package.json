@@ -1,0 +1,21 @@
+{
+  "name": "product-eng-tha",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start-customer-db": "node scripts/start-customer-db.js",
+    "stop-customer-db": "docker-compose down customer-postgres",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"BE,FE\" --prefix-colors \"cyan,magenta\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
