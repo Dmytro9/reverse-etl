@@ -13,7 +13,7 @@ A simplified Reverse ETL setup flow that allows users to configure a data pipeli
 
 ## Prerequisites
 
-- **Docker** and **Docker Compose** (for PostgreSQL database)
+- **Docker** and **Docker Compose** (for PostgreSQL database) - Docker daemon should be running
 - **Node.js** v20.19.0 (specified in `.nvmrc`)
 
 ## Quick Start
