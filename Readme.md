@@ -4,10 +4,12 @@ A simplified Reverse ETL setup flow that allows users to configure a data pipeli
 
 ## Features
 
-- 🔌 **Connect to PostgreSQL** - Test and verify database connections
+- 🔌 **Connect to PostgreSQL** - Test and verify database connections with SSRF protection
 - 📊 **Table Selection** - Browse available tables with schema preview
 - 🗺️ **Column Mapping** - Map database columns to nested JSON paths with validation
 - 👁️ **Preview Output** - See the transformed JSON payload before sending
+- 🔒 **Security Hardened** - SSRF protection, rate limiting, SQL injection prevention
+- 📈 **Production Ready** - Graceful shutdown, health checks, structured logging
 - 📱 **Mobile Responsive** - Works on screens as small as 320px
 - 🎨 **Modern UI** - Glassmorphism design with smooth animations
 
@@ -51,10 +53,17 @@ This will:
 
 ### 4. Configure environment variables
 
-**Backend** (optional - defaults are fine):
+**Backend** (optional - defaults are fine for development):
 ```bash
-cp backend/.env.example backend/.env
-# Edit if needed - default PORT is 3001
+# backend/.env
+PORT=3001
+NODE_ENV=development
+
+# Allow localhost connections in development (bypasses SSRF checks)
+ALLOW_LOCALHOST=true
+
+# Production only: Comma-separated list of allowed origins for CORS
+# ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
 ```
 
 **Frontend** (already configured):
@@ -205,10 +214,20 @@ Generate preview of transformed data.
 
 ## Key Technical Decisions
 
+### Security
+
+- **SSRF Protection**: Connection strings validated against blocked hosts (localhost, private IPs, cloud metadata)
+- **Rate Limiting**: 100 req/min general, 10 connections/min per IP (in-memory store)
+- **SQL Injection Prevention**: Parameterized queries + identifier validation (regex, reserved keywords, length limits)
+- **Resource Limits**: Max 100 connection pools, 5 clients each, 30s query timeout, 10s connection timeout
+- **Error Handling**: Generic messages in production, detailed only in development, correlation IDs
+- **Graceful Shutdown**: SIGTERM/SIGINT handlers, closes pools before exit
+- **Input Validation**: Zod schemas, path collision detection, preview limit (100 rows)
+- **Structured Logging**: JSON in production, correlation IDs, no credential leakage
+
 ### Backend
 
-- **Connection Pooling**: Connections are stored in-memory with UUID keys and 30-minute TTL
-- **SQL Injection Prevention**: Uses parameterized queries and identifier validation
+- **Connection Pooling**: Connections stored in-memory with UUID keys and 30-minute TTL
 - **Validation**: Zod schemas for type-safe request validation
 - **Error Handling**: Custom error classes with centralized middleware
 - **CORS**: Environment-aware (permissive in dev, whitelist in production)
@@ -223,7 +242,7 @@ Generate preview of transformed data.
 
 ## Assumptions Made
 
-1. **Single User**: No authentication or multi-tenancy required
+1. **Single User**: No authentication or multi-tenancy required (see SECURITY.md for production considerations)
 2. **Short Sessions**: Connection pools expire after 30 minutes of inactivity
 3. **Preview Only**: No actual webhook execution - sends are simulated
 4. **PostgreSQL Only**: Only PostgreSQL databases are supported
@@ -233,6 +252,7 @@ Generate preview of transformed data.
 8. **Trust Input**: Webhook URL is not validated or called (simulation only)
 9. **Modern Browsers**: Targets ES2020+ (no IE support)
 10. **Column Types**: All database types are transformed to JSON strings/numbers/nulls
+11. **Development Database**: SSRF checks bypassed with `ALLOW_LOCALHOST=true` for local Docker databases
 
 ## Environment Variables
 
@@ -240,6 +260,9 @@ Generate preview of transformed data.
 ```env
 PORT=3001
 NODE_ENV=development
+
+# Development: Allow localhost connections (bypasses SSRF protection)
+ALLOW_LOCALHOST=true
 
 # Production only: Comma-separated list of allowed origins for CORS
 # ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
@@ -249,6 +272,15 @@ NODE_ENV=development
 ```env
 VITE_API_BASE=http://localhost:3001/api
 ```
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for comprehensive security documentation including:
+- Threat model and attack vectors
+- Implemented mitigations (SSRF, SQL injection, DoS, etc.)
+- Known gaps and future improvements
+- Security best practices for deployment
+- Incident response procedures
 
 ## Scripts
 
@@ -280,29 +312,45 @@ Given more time, here are potential enhancements:
 - Integration tests for API endpoints (Supertest)
 - Component tests for React components (React Testing Library)
 - E2E tests for critical user flows (Playwright)
+- Security testing (OWASP ZAP, penetration testing)
 
 ### Features
 - **Actual Webhook Execution**: Send real HTTP requests to webhook URLs
-- **Authentication**: Add user authentication and authorization
-- **Persistence**: Save configurations to database
-- **Schedule Syncs**: Set up recurring sync schedules
+- **Authentication**: Add user authentication and authorization (OAuth2, JWT)
+- **Persistence**: Save configurations to database (PostgreSQL, MongoDB)
+- **Schedule Syncs**: Set up recurring sync schedules (cron, job queue)
 - **Data Filtering**: Add WHERE clause support for preview queries
 - **Column Type Detection**: Smart default mapping based on column types
 - **Error Recovery**: Retry mechanisms for failed webhooks
-- **Audit Logs**: Track all sync operations
-- **Multiple Destinations**: Support multiple destination types (not just webhooks)
-- **Batch Processing**: Handle large datasets efficiently
-- **Data Transformations**: Add custom transformation functions
+- **Audit Logs**: Track all sync operations with immutable logs
+- **Multiple Destinations**: Support multiple destination types (Salesforce, Hubspot, etc.)
+- **Batch Processing**: Handle large datasets efficiently (streaming, pagination)
+- **Data Transformations**: Add custom transformation functions (JavaScript, JSONata)
+
+### Security (See SECURITY.md for details)
+- **✅ SSRF Protection** - Implemented
+- **✅ Rate Limiting** - Implemented (in-memory, needs Redis for production)
+- **✅ SQL Injection Prevention** - Implemented
+- **✅ Resource Limits** - Implemented
+- **✅ Graceful Shutdown** - Implemented
+- **✅ Structured Logging** - Implemented
+- **❌ Authentication/Authorization** - Not implemented (high priority)
+- **⚠️ TLS for Database Connections** - Partial (not enforced)
+- **❌ Secrets Management** - Not implemented (Vault, AWS Secrets Manager)
+- **❌ DNS Rebinding Protection** - Not implemented
+- **⚠️ Audit Logging** - Partial (needs immutability)
 
 ### Technical
+- **Distributed Rate Limiting**: Use Redis instead of in-memory store
 - **Connection Reuse**: Persistent connection pool across server restarts
-- **Rate Limiting**: Prevent abuse of API endpoints
 - **Caching**: Cache table schemas to reduce database queries
 - **WebSocket**: Real-time validation feedback
 - **Docker Compose**: Single command to run entire stack
-- **Monitoring**: Application metrics and logging (Prometheus, Grafana)
-- **Performance**: Query optimization for large tables
-- **Security**: API key authentication, input sanitization improvements
+- **Monitoring**: Application metrics and logging (Prometheus, Grafana, DataDog)
+- **Performance**: Query optimization for large tables, connection pooling improvements
+- **CI/CD**: Automated testing, deployment pipelines
+- **API Versioning**: Support multiple API versions
+- **GraphQL**: Consider GraphQL API alongside REST
 
 ### UX
 - **Mapping Templates**: Save and reuse common mapping patterns
@@ -312,6 +360,7 @@ Given more time, here are potential enhancements:
 - **Dark Mode**: Support for dark theme
 - **Keyboard Shortcuts**: Power user features
 - **Progress Indicators**: Show progress for long operations
+- **Export/Import**: Export configuration as JSON
 
 ## Technology Stack
 

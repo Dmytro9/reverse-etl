@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
+import { logger } from "../services/logger";
 
 export class AppError extends Error {
   constructor(
@@ -40,17 +41,21 @@ export const errorHandler = (
   res: Response,
   next: NextFunction,
 ): void => {
-  console.error("Error:", {
-    name: err.name,
-    message: err.message,
+  const correlationId = req.headers["x-correlation-id"] as string;
+
+  // Log error with structured logging
+  logger.error("Request error", err, {
+    correlationId,
     path: req.path,
     method: req.method,
+    statusCode: err instanceof AppError ? err.statusCode : 500,
   });
 
   if (err instanceof ZodError) {
     res.status(400).json({
       error: "Validation failed",
       details: err.issues.map((e) => `${e.path.join(".")}: ${e.message}`),
+      correlationId,
     });
     return;
   }
@@ -59,13 +64,16 @@ export const errorHandler = (
     res.status(err.statusCode).json({
       error: err.message,
       ...(err.details && { details: err.details }),
+      correlationId,
     });
     return;
   }
 
+  // Don't leak error details in production
   res.status(500).json({
     error: "Internal server error",
     message: process.env.NODE_ENV === "development" ? err.message : undefined,
+    correlationId,
   });
 };
 

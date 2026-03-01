@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/errorHandler";
 import { connectionController } from "../controllers/connectionController";
+import { connectionRateLimiter } from "../middleware/rateLimiter";
 
 const router = Router();
 
+// Test connection - stricter rate limit
 router.post(
   "/test",
+  connectionRateLimiter.middleware(),
   asyncHandler(connectionController.testConnection.bind(connectionController)),
 );
 

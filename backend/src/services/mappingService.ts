@@ -111,13 +111,40 @@ class MappingService {
 
     for (let i = 0; i < segments.length - 1; i++) {
       const key = segments[i];
+      const existing = current[key];
+      
+      // Check if the path already exists and is not an object
+      if (existing !== undefined && existing !== null) {
+        if (typeof existing !== "object" || Array.isArray(existing)) {
+          throw new ValidationError(
+            `Path collision at "${segments.slice(0, i + 1).join(".")}": ` +
+            `Cannot create nested path because a scalar value already exists at this location.`
+          );
+        }
+      }
+      
+      // Create object if it doesn't exist
       if (current[key] === undefined || current[key] === null) {
         current[key] = {};
       }
+      
       current = current[key] as Record<string, unknown>;
     }
 
-    current[segments[segments.length - 1]] = value;
+    const finalKey = segments[segments.length - 1];
+    
+    // Check if we're trying to overwrite an object with a scalar
+    if (current[finalKey] !== undefined && 
+        typeof current[finalKey] === "object" && 
+        !Array.isArray(current[finalKey]) &&
+        Object.keys(current[finalKey] as object).length > 0) {
+      throw new ValidationError(
+        `Path collision at "${dotPath}": ` +
+        `Cannot assign scalar value because nested properties already exist at this location.`
+      );
+    }
+
+    current[finalKey] = value;
   }
 }
 

@@ -3,6 +3,23 @@ import { NotFoundError, ValidationError } from "../middleware/errorHandler";
 import type { Column } from "../types";
 
 class TableService {
+  // PostgreSQL reserved keywords that cannot be used as unquoted identifiers
+  private readonly RESERVED_KEYWORDS = new Set([
+    "all", "analyse", "analyze", "and", "any", "array", "as", "asc", "asymmetric",
+    "both", "case", "cast", "check", "collate", "column", "constraint", "create",
+    "current_catalog", "current_date", "current_role", "current_time",
+    "current_timestamp", "current_user", "default", "deferrable", "desc",
+    "distinct", "do", "else", "end", "except", "false", "fetch", "for",
+    "foreign", "from", "grant", "group", "having", "in", "initially", "intersect",
+    "into", "lateral", "leading", "limit", "localtime", "localtimestamp", "not",
+    "null", "offset", "on", "only", "or", "order", "placing", "primary",
+    "references", "returning", "select", "session_user", "some", "symmetric",
+    "table", "then", "to", "trailing", "true", "union", "unique", "user",
+    "using", "variadic", "when", "where", "window", "with",
+  ]);
+
+  private readonly MAX_IDENTIFIER_LENGTH = 63; // PostgreSQL limit
+
   async listTables(pool: Pool): Promise<string[]> {
     const result = await pool.query(
       `SELECT table_name 
@@ -74,6 +91,21 @@ class TableService {
         `Invalid identifier: "${identifier}". Must start with letter or underscore and contain only alphanumeric characters and underscores.`,
       );
     }
+
+    // Check length limit
+    if (identifier.length > this.MAX_IDENTIFIER_LENGTH) {
+      throw new ValidationError(
+        `Identifier "${identifier}" exceeds PostgreSQL's maximum length of ${this.MAX_IDENTIFIER_LENGTH} characters.`,
+      );
+    }
+
+    // Check if it's a reserved keyword
+    if (this.RESERVED_KEYWORDS.has(identifier.toLowerCase())) {
+      // Reserved keywords must be quoted
+      return `"${identifier}"`;
+    }
+
+    // Quote all identifiers for safety (prevents case sensitivity issues)
     return `"${identifier}"`;
   }
 }
